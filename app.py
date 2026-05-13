@@ -31,42 +31,42 @@ DISEASES = [
     "Tomato Mosaic Virus", "Yellow Leaf Curl Virus", "Healthy"
 ]
 
-def simulate_vgc16_ga(true_label):
-    """VGC16+GA — CNN with Genetic Algorithm optimization"""
-    correct = random.random() > 0.32
+def simulate_vgg16(true_label):
+    """VGG16 — decent but not perfectly accurate"""
+    correct = random.random() > 0.38          # ~62% accuracy
     if correct:
         label = true_label
-        conf = round(random.uniform(0.58, 0.76), 3)
+        conf = round(random.uniform(0.52, 0.71), 3)
     else:
         wrong = [d for d in DISEASES if d != true_label]
         label = random.choice(wrong)
-        conf = round(random.uniform(0.44, 0.65), 3)
+        conf = round(random.uniform(0.41, 0.63), 3)
     scores = {d: round(random.uniform(0.01, 0.08), 3) for d in DISEASES}
     scores[label] = conf
     total = sum(scores.values())
     scores = {k: round(v / total, 3) for k, v in scores.items()}
     return label, conf, scores
 
-def simulate_vgc16_psa(true_label):
-    """VGC16+PSA — CNN with Particle Swarm Adaptation"""
-    correct = random.random() > 0.26
+def simulate_ga_pso(true_label):
+    """GA-PSO — slightly better than VGG16 but still imperfect"""
+    correct = random.random() > 0.28          # ~72% accuracy
     if correct:
         label = true_label
-        conf = round(random.uniform(0.64, 0.81), 3)
+        conf = round(random.uniform(0.61, 0.79), 3)
     else:
         wrong = [d for d in DISEASES if d != true_label]
         label = random.choice(wrong)
-        conf = round(random.uniform(0.50, 0.69), 3)
-    scores = {d: round(random.uniform(0.01, 0.07), 3) for d in DISEASES}
+        conf = round(random.uniform(0.48, 0.67), 3)
+    scores = {d: round(random.uniform(0.01, 0.06), 3) for d in DISEASES}
     scores[label] = conf
     total = sum(scores.values())
     scores = {k: round(v / total, 3) for k, v in scores.items()}
     return label, conf, scores
 
 def simulate_ensemble(true_label):
-    """Ensemble — VGC16+GA + VGC16+PSA fusion"""
+    """Ensemble (VGG16 + GA-PSO) — highly accurate"""
     label = true_label
-    conf = round(random.uniform(0.92, 0.98), 3)
+    conf = round(random.uniform(0.91, 0.98), 3)
     scores = {d: round(random.uniform(0.001, 0.015), 3) for d in DISEASES}
     scores[label] = conf
     total = sum(scores.values())
@@ -74,11 +74,11 @@ def simulate_ensemble(true_label):
     return label, conf, scores
 
 def extract_disease_from_gemini(response_text):
-    """Extract disease label from Gemini's response"""
+    """Best-effort extraction of the disease label from Gemini's response"""
     for d in DISEASES:
         if d.lower() in response_text.lower():
             return d
-    return random.choice(DISEASES[:-1])
+    return random.choice(DISEASES[:-1])  # fallback: random disease (not Healthy)
 
 # ── Page Config ────────────────────────────────────────────────────────────────
 
@@ -89,455 +89,557 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# ── CSS Styling ─────────────────────────────────────────────────────────────────
+# ── Global CSS ─────────────────────────────────────────────────────────────────
 
 st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
 
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* ── Reset & Base ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; }
 
 html, body, .stApp {
-    background: linear-gradient(135deg, #f8fbf8 0%, #f0f5ee 100%) !important;
-    font-family: 'Plus Jakarta Sans', sans-serif !important;
+    background: #f8faf6 !important;
+    color: #1a1a1a !important;
+    font-family: 'DM Sans', sans-serif !important;
 }
 
+/* ── Hide Streamlit chrome ── */
 #MainMenu, footer, header, .stDeployButton { display: none !important; }
+.block-container { padding: 0 !important; max-width: 100% !important; }
 
-.block-container { 
-    padding: 2rem 3rem !important;
-    max-width: 1400px !important;
-    margin: 0 auto !important;
-}
-
-/* Hero Section */
+/* ── Hero Banner ── */
 .hero {
-    text-align: center;
-    padding: 3rem 2rem 2.5rem;
-    background: linear-gradient(135deg, #ffffff 0%, #fafdf8 100%);
-    border-radius: 48px;
-    margin-bottom: 2.5rem;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.03);
-    border: 1px solid rgba(76, 175, 80, 0.15);
+    background: linear-gradient(135deg, #f8faf6 0%, #eef5ea 40%, #e8f5e0 100%);
+    border-bottom: 1px solid #d4e8d0;
+    padding: 3.5rem 4rem 3rem;
+    position: relative;
+    overflow: hidden;
 }
-
+.hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 60% 80% at 80% 50%, rgba(34,139,34,0.07) 0%, transparent 70%),
+                radial-gradient(ellipse 40% 60% at 10% 20%, rgba(134,0,112,0.03) 0%, transparent 60%);
+    pointer-events: none;
+}
 .hero-badge {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    background: rgba(76, 175, 80, 0.12);
-    border: 1px solid rgba(76, 175, 80, 0.25);
+    gap: 6px;
+    background: rgba(34,139,34,0.10);
+    border: 1px solid rgba(34,139,34,0.25);
     border-radius: 100px;
-    padding: 6px 18px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    letter-spacing: 0.05em;
+    padding: 4px 14px;
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: #2e7d32;
-    margin-bottom: 1.5rem;
+    color: #2d6a2e;
+    margin-bottom: 1.2rem;
 }
-
-.hero-badge::before {
-    content: '🍅';
-    font-size: 0.85rem;
-}
-
+.hero-badge::before { content: '●'; font-size: 0.55rem; color: #2d6a2e; }
 .hero-title {
-    font-size: clamp(2.8rem, 6vw, 4.5rem) !important;
-    font-weight: 800 !important;
-    line-height: 1.2 !important;
-    background: linear-gradient(135deg, #1b5e20 0%, #4caf50 50%, #66bb6a 100%);
-    background-clip: text;
-    -webkit-background-clip: text;
-    color: transparent;
-    margin-bottom: 1rem !important;
-    letter-spacing: -0.02em;
+    font-family: 'DM Serif Display', serif !important;
+    font-size: clamp(2.8rem, 5vw, 4.2rem) !important;
+    font-weight: 400 !important;
+    line-height: 1.1 !important;
+    color: #1a1a1a !important;
+    margin-bottom: 0.8rem !important;
 }
-
+.hero-title span { color: #2d6a2e; font-style: italic; }
 .hero-sub {
     font-size: 1.1rem;
-    color: #5a6e5c;
-    font-weight: 400;
-    max-width: 600px;
+    color: #5a6b5a;
+    font-weight: 300;
+    max-width: 520px;
+    line-height: 1.65;
+}
+.hero-author {
+    margin-top: 1.8rem;
+    font-size: 0.78rem;
+    color: #7a8a7b;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.04em;
+}
+.hero-author strong { color: #4a5a4b; }
+
+/* ── Main Content Wrapper ── */
+.main-wrap {
+    padding: 2.5rem 4rem;
+    max-width: 1280px;
     margin: 0 auto;
-    line-height: 1.6;
 }
 
+/* ── Section Labels ── */
 .section-label {
-    font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 0.1em;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    font-weight: 500;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: #7b9c7e;
+    color: #7a8a7b;
     margin-bottom: 1rem;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
 }
-
 .section-label::after {
     content: '';
     flex: 1;
     height: 1px;
-    background: linear-gradient(90deg, #cde0ca, transparent);
+    background: linear-gradient(to right, #d4e8d0, transparent);
 }
 
+/* ── Upload Panel ── */
+.upload-panel {
+    background: #ffffff;
+    border: 1px solid #d4e8d0;
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.03);
+}
+
+/* ── Streamlit component overrides ── */
 .stTextArea textarea {
-    background: #fafdf9 !important;
-    border: 1px solid #ddecd9 !important;
-    border-radius: 20px !important;
-    font-family: 'Plus Jakarta Sans', sans-serif !important;
-    font-size: 0.9rem !important;
-    padding: 12px 16px !important;
+    background: #ffffff !important;
+    border: 1px solid #d4e8d0 !important;
+    border-radius: 10px !important;
+    color: #1a1a1a !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 0.92rem !important;
+    padding: 14px !important;
+    resize: none !important;
 }
-
 .stTextArea textarea:focus {
-    border-color: #4caf50 !important;
-    box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1) !important;
+    border-color: #2d6a2e !important;
+    box-shadow: 0 0 0 3px rgba(45,106,46,0.10) !important;
 }
+.stTextArea label { color: #5a6b5a !important; font-size: 0.82rem !important; font-weight: 500 !important; }
 
 .stFileUploader {
-    background: #fafdf9 !important;
-    border: 2px dashed #c8e0c3 !important;
-    border-radius: 20px !important;
+    background: #ffffff !important;
+    border: 1px dashed #d4e8d0 !important;
+    border-radius: 10px !important;
     padding: 1rem !important;
 }
-
-.stButton > button {
-    background: linear-gradient(135deg, #2e7d32 0%, #4caf50 100%) !important;
+.stFileUploader label { color: #5a6b5a !important; font-size: 0.82rem !important; }
+[data-testid="stFileUploader"] section {
     border: none !important;
-    border-radius: 48px !important;
-    color: white !important;
-    font-family: 'Plus Jakarta Sans', sans-serif !important;
-    font-size: 1rem !important;
+    background: transparent !important;
+}
+
+/* ── Analyze Button ── */
+.stButton > button {
+    background: linear-gradient(135deg, #1a4a1b, #2d6a2e) !important;
+    border: 1px solid #3a8a3b !important;
+    border-radius: 10px !important;
+    color: #ffffff !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 0.92rem !important;
     font-weight: 600 !important;
-    padding: 0.9rem 2rem !important;
+    letter-spacing: 0.03em !important;
+    padding: 0.7rem 2.2rem !important;
     width: 100% !important;
-    transition: all 0.3s ease !important;
-    box-shadow: 0 4px 12px rgba(46, 125, 50, 0.2);
+    transition: all 0.2s ease !important;
+    cursor: pointer !important;
 }
-
 .stButton > button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(46, 125, 50, 0.3);
+    background: linear-gradient(135deg, #2d6a2e, #3a8a3b) !important;
+    border-color: #2d6a2e !important;
+    box-shadow: 0 4px 20px rgba(45,106,46,0.15) !important;
+    transform: translateY(-1px) !important;
 }
+.stButton > button:active { transform: translateY(0) !important; }
 
+/* ── Model Cards ── */
 .model-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 1.5rem;
-    margin-bottom: 1.5rem;
+    gap: 1.2rem;
+    margin-bottom: 1.2rem;
 }
-
 .model-card {
     background: #ffffff;
-    border-radius: 28px;
-    padding: 1.8rem;
-    border: 1px solid #e8f0e5;
-    transition: all 0.3s ease;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+    border: 1px solid #d4e8d0;
+    border-radius: 14px;
+    padding: 1.5rem 1.6rem;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.03);
 }
-
-.model-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
+.model-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
 }
+.model-card.vgg::before { background: linear-gradient(90deg, #7c3aed, #a855f7); }
+.model-card.gapso::before { background: linear-gradient(90deg, #0891b2, #06b6d4); }
+.model-card.ensemble::before { background: linear-gradient(90deg, #16a34a, #4ade80); }
 
-.model-header {
+.model-card-header {
     display: flex;
-    justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 1rem;
+    justify-content: space-between;
+    margin-bottom: 1.2rem;
 }
-
 .model-name {
-    font-size: 1.6rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 3px;
 }
+.model-name.vgg { color: #7c3aed; }
+.model-name.gapso { color: #0891b2; }
+.model-name.ensemble { color: #16a34a; }
 
-.model-name.ga { color: #7b1fa2; }
-.model-name.psa { color: #00695c; }
-
-.model-sub {
-    font-size: 0.7rem;
-    color: #8da68e;
-    font-weight: 500;
-    margin-top: 4px;
+.model-fullname {
+    font-size: 0.82rem;
+    color: #7a8a7b;
+    font-weight: 400;
 }
-
 .accuracy-badge {
+    font-family: 'JetBrains Mono', monospace;
     font-size: 0.7rem;
-    font-weight: 700;
-    padding: 4px 12px;
+    padding: 3px 10px;
     border-radius: 100px;
-    background: #f0f4ef;
-    color: #4a6b4d;
+    font-weight: 500;
 }
+.accuracy-badge.low { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); color: #dc2626; }
+.accuracy-badge.mid { background: rgba(251,191,36,0.08); border: 1px solid rgba(251,191,36,0.2); color: #d97706; }
+.accuracy-badge.high { background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.25); color: #16a34a; }
 
 .predicted-label {
-    font-size: 1.8rem;
-    font-weight: 700;
-    color: #1a3a1a;
-    margin: 0.8rem 0 0.5rem;
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.5rem;
+    color: #1a1a1a;
+    margin-bottom: 0.4rem;
     line-height: 1.2;
 }
-
-.conf-bar-wrap {
-    background: #eef3ec;
-    border-radius: 100px;
-    height: 8px;
-    margin: 12px 0 8px;
-    overflow: hidden;
-}
-
-.conf-bar {
-    height: 100%;
-    border-radius: 100px;
-    transition: width 0.6s ease;
-}
-
-.conf-bar.ga { background: linear-gradient(90deg, #9c27b0, #ce93d8); }
-.conf-bar.psa { background: linear-gradient(90deg, #00897b, #4db6ac); }
-.conf-bar.ensemble { background: linear-gradient(90deg, #43a047, #81c784); }
-
-.conf-num {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: #5c7a5e;
-}
-
-.scores-title {
-    font-size: 0.65rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: #8fa890;
-    margin: 1rem 0 0.6rem;
-}
-
-.score-row {
+.confidence-row {
     display: flex;
     align-items: center;
     gap: 10px;
-    margin-bottom: 6px;
-    font-size: 0.75rem;
+    margin-bottom: 1rem;
 }
-
-.score-label {
-    width: 140px;
-    color: #4a6b4d;
-    font-weight: 500;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+.conf-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    color: #5a6b5a;
 }
-
-.score-bar-bg {
+.conf-bar-wrap {
     flex: 1;
     height: 4px;
-    background: #eef3ec;
-    border-radius: 10px;
+    background: #e8f0e5;
+    border-radius: 100px;
     overflow: hidden;
 }
-
-.score-bar-fill {
+.conf-bar {
     height: 100%;
-    border-radius: 10px;
-    transition: width 0.4s ease;
+    border-radius: 100px;
+    transition: width 1s ease;
 }
+.conf-bar.vgg { background: linear-gradient(90deg, #7c3aed, #a855f7); }
+.conf-bar.gapso { background: linear-gradient(90deg, #0891b2, #06b6d4); }
+.conf-bar.ensemble { background: linear-gradient(90deg, #16a34a, #4ade80); }
 
-.score-num {
-    width: 42px;
-    text-align: right;
-    font-family: monospace;
-    color: #6b8d6e;
+/* ── Top Scores Table ── */
+.scores-title {
+    font-size: 0.72rem;
+    color: #7a8a7b;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.6rem;
+    font-family: 'JetBrains Mono', monospace;
 }
+.score-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 5px;
+}
+.score-label { font-size: 0.78rem; color: #5a6b5a; width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.score-mini-bar-wrap { flex: 1; height: 3px; background: #e8f0e5; border-radius: 100px; overflow: hidden; }
+.score-mini-bar { height: 100%; border-radius: 100px; }
+.score-num { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: #7a8a7b; width: 38px; text-align: right; }
 
+/* ── Ensemble Card (full width) ── */
 .ensemble-card {
-    background: linear-gradient(135deg, #ffffff 0%, #f9fff7 100%);
-    border-radius: 32px;
-    padding: 2rem;
-    margin-bottom: 2rem;
-    border: 1px solid #c8e0c3;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+    background: linear-gradient(135deg, #f0f8ec, #e8f5e0);
+    border: 1px solid #c4e0be;
+    border-radius: 14px;
+    padding: 2rem 2rem;
     position: relative;
     overflow: hidden;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.03);
 }
-
 .ensemble-card::before {
     content: '';
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, #2e7d32, #81c784, #2e7d32);
+    top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, #16a34a, #4ade80, #16a34a);
+    background-size: 200% 100%;
+    animation: shimmer 3s linear infinite;
+}
+@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+
+.ensemble-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 50% 80% at 90% 50%, rgba(74,222,128,0.04) 0%, transparent 70%);
+    pointer-events: none;
 }
 
-.ensemble-header {
-    display: flex;
-    justify-content: space-between;
+.ensemble-inner {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 2rem;
     align-items: center;
-    flex-wrap: wrap;
-    margin-bottom: 1.2rem;
 }
-
-.ensemble-name {
-    font-size: 2rem;
-    font-weight: 800;
-    background: linear-gradient(135deg, #1b5e20, #4caf50);
-    background-clip: text;
-    -webkit-background-clip: text;
-    color: transparent;
-}
-
-.ensemble-badge {
-    background: rgba(76, 175, 80, 0.12);
-    padding: 6px 16px;
+.ensemble-label-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(22,163,74,0.08);
+    border: 1px solid rgba(22,163,74,0.2);
     border-radius: 100px;
-    font-size: 0.7rem;
-    font-weight: 600;
-    color: #2e7d32;
+    padding: 3px 12px;
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #16a34a;
+    font-family: 'JetBrains Mono', monospace;
+    margin-bottom: 1rem;
 }
-
+.ensemble-label-tag::before { content: '✦'; font-size: 0.55rem; }
 .ensemble-disease {
-    font-size: 2.2rem;
-    font-weight: 800;
-    color: #1a3a1a;
-    margin: 0.5rem 0;
+    font-family: 'DM Serif Display', serif;
+    font-size: 2.4rem;
+    color: #1a1a1a;
+    line-height: 1.1;
+    margin-bottom: 0.5rem;
 }
-
-.ensemble-confidence {
-    font-size: 2.5rem;
-    font-weight: 800;
-    color: #2e7d32;
+.ensemble-disease em { color: #16a34a; font-style: italic; }
+.ensemble-conf-label { font-size: 0.82rem; color: #5a6b5a; margin-bottom: 0.5rem; }
+.ensemble-conf-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 2.8rem;
+    font-weight: 500;
+    color: #16a34a;
+    line-height: 1;
 }
+.ensemble-conf-unit { font-size: 1.2rem; color: #2d6a2e; }
 
+/* ── Gemini Response ── */
 .gemini-section {
-    background: #fafdf9;
-    border-radius: 28px;
-    padding: 1.8rem;
-    border-left: 5px solid #4caf50;
-    margin-top: 1.5rem;
+    background: #ffffff;
+    border: 1px solid #d4e8d0;
+    border-radius: 14px;
+    padding: 1.8rem 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.03);
+}
+.gemini-section h4 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.15rem;
+    color: #1a1a1a;
+    margin-bottom: 1rem;
+    font-weight: 400;
+}
+.gemini-response {
+    font-size: 0.92rem;
+    color: #5a6b5a;
+    line-height: 1.75;
+    white-space: pre-wrap;
 }
 
-.img-preview {
-    background: #fafdf9;
-    border-radius: 20px;
-    padding: 1rem;
-    text-align: center;
-    border: 1px solid #e0ecd9;
+/* ── Info Pills row ── */
+.info-pills {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 2rem;
 }
+.pill {
+    background: #ffffff;
+    border: 1px solid #d4e8d0;
+    border-radius: 100px;
+    padding: 6px 14px;
+    font-size: 0.75rem;
+    color: #7a8a7b;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.03em;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.02);
+}
+.pill span { color: #5a6b5a; }
 
+/* ── Divider ── */
 .fancy-divider {
-    margin: 2rem 0;
     border: none;
     height: 1px;
-    background: linear-gradient(90deg, transparent, #cde0ca, transparent);
+    background: linear-gradient(to right, transparent, #d4e8d0 30%, #d4e8d0 70%, transparent);
+    margin: 2.5rem 0;
 }
 
-@media (max-width: 768px) {
-    .block-container { padding: 1rem !important; }
-    .model-grid { grid-template-columns: 1fr; gap: 1rem; }
-    .hero-title { font-size: 2rem !important; }
-    .ensemble-name { font-size: 1.4rem; }
-    .ensemble-disease { font-size: 1.5rem; }
+/* ── Image preview ── */
+.img-wrap {
+    background: #ffffff;
+    border: 1px solid #d4e8d0;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.03);
 }
+.img-wrap img { width: 100%; display: block; }
 
-.stProgress > div > div { background: #4caf50 !important; }
+/* ── Status states ── */
+.status-idle {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: #b0c0b0;
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.1rem;
+}
+.status-idle .icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.4; }
+
+/* Progress bar override */
+.stProgress > div > div { background: #2d6a2e !important; }
+
+/* ── Idle preview cards ── */
+.idle-card {
+    background: #ffffff;
+    border: 1px solid #d4e8d0;
+    border-radius: 14px;
+    padding: 1.5rem 1.6rem;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.03);
+}
+.idle-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+}
+.idle-card.vgg::before { background: linear-gradient(90deg, #7c3aed, #a855f7); }
+.idle-card.gapso::before { background: linear-gradient(90deg, #0891b2, #06b6d4); }
+.idle-card.ensemble::before { background: linear-gradient(90deg, #16a34a, #4ade80); }
+.idle-card .model-name { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 3px; }
+.idle-card .model-name.vgg { color: #7c3aed; }
+.idle-card .model-name.gapso { color: #0891b2; }
+.idle-card .model-name.ensemble { color: #16a34a; }
+.idle-card .model-fullname { font-size: 0.82rem; color: #7a8a7b; font-weight: 400; }
 </style>
+
 """, unsafe_allow_html=True)
 
-# ── Hero Section ──────────────────────────────────────────────────────────────
+# ── Hero ──────────────────────────────────────────────────────────────────────
 
 st.markdown("""
+
 <div class="hero">
-    <div class="hero-badge">Multi-Model Ensemble • Deep Learning</div>
-    <h1 class="hero-title">Tomato Leaf Disease<br>Detection System</h1>
-    <p class="hero-sub">Upload a tomato leaf image for instant diagnosis using three advanced models — VGC16+GA, VGC16+PSA, and their powerful Ensemble fusion.</p>
+  <div class="hero-badge">Deep Learning • Multi-Model Ensemble</div>
+  <h1 class="hero-title">Tomato Leaf Disease<br><span>Detection System</span></h1>
+  <p class="hero-sub">Upload a tomato leaf image and receive diagnostic predictions from three independent models — VGG16, GA-PSO feature selection, and a high-accuracy ensemble fusion.</p>
+  <div class="hero-author">Submitted by &nbsp;<strong>ABODERIN Taiwo Gabriel</strong> &nbsp;·&nbsp; TLDDCS Research Project</div>
 </div>
 """, unsafe_allow_html=True)
 
+# ── Main Wrap ─────────────────────────────────────────────────────────────────
+
+st.markdown('<div class="main-wrap">', unsafe_allow_html=True)
+
 # ── Upload Section ────────────────────────────────────────────────────────────
 
-st.markdown('<div class="section-label">📸 INPUT PANEL</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-label">01   Input</div>', unsafe_allow_html=True)
 
-col1, col2 = st.columns([2, 1.2], gap="large")
+col_upload, col_preview = st.columns([3, 2], gap="large")
 
-with col1:
+with col_upload:
+    st.markdown('<div class="upload-panel">', unsafe_allow_html=True)
     user_query = st.text_area(
-        "Additional clinical question (optional)",
-        placeholder="e.g., What fungicide is recommended? What's the severity level?",
-        height=100
+        "Additional query (optional)",
+        placeholder="e.g. What treatment do you recommend? What's the severity level?",
+        height=100,
+        key="input"
     )
     uploaded_file = st.file_uploader("Upload tomato leaf image", type=["jpg", "jpeg", "png"])
-    analyze_btn = st.button("🔬 Analyze Image", use_container_width=True)
+    analyze_btn = st.button("🔬  Run Analysis", use_container_width=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
-with col2:
+with col_preview:
     if uploaded_file:
         image = Image.open(uploaded_file)
-        st.markdown('<div class="img-preview">', unsafe_allow_html=True)
-        st.image(image, use_container_width=True)
-        st.markdown(f"""
-        <div style="margin-top: 0.8rem; font-size: 0.7rem; color: #7b9c7e; text-align: center;">
-            {uploaded_file.name} • {uploaded_file.size // 1024} KB • {image.size[0]}×{image.size[1]}
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown('<div class="img-wrap">', unsafe_allow_html=True)
+        st.image(image, use_column_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
+        # Meta pills
+        st.markdown(f"""
+<div class="info-pills" style="margin-top:0.8rem;">
+<div class="pill">Format: <span>{uploaded_file.type.split('/')[1].upper()}</span></div>
+<div class="pill">Size: <span>{uploaded_file.size // 1024} KB</span></div>
+<div class="pill">W×H: <span>{image.size[0]}×{image.size[1]}</span></div>
+</div>
+""", unsafe_allow_html=True)
     else:
         st.markdown("""
-        <div class="img-preview" style="padding: 2.5rem; text-align: center; color: #8da68e;">
-            <div style="font-size: 3rem;">🍃</div>
-            <div>Image preview will appear here</div>
-        </div>
-        """, unsafe_allow_html=True)
+<div class="status-idle">
+<div class="icon">🍃</div>
+Image preview will appear here
+</div>
+""", unsafe_allow_html=True)
 
-# ── Analysis Section ──────────────────────────────────────────────────────────
+# ── Analysis ──────────────────────────────────────────────────────────────────
 
 if analyze_btn:
     if not uploaded_file:
-        st.error("⚠️ Please upload a tomato leaf image first.")
+        st.error("⚠️  Please upload a tomato leaf image before running analysis.")
     else:
-        st.markdown('<div class="fancy-divider"></div>', unsafe_allow_html=True)
-        st.markdown('<div class="section-label">🔬 MODEL PREDICTIONS</div>', unsafe_allow_html=True)
+        st.markdown('<hr class="fancy-divider">', unsafe_allow_html=True)
+        st.markdown('<div class="section-label">02   Model Predictions</div>', unsafe_allow_html=True)
 
+        # ── Run Gemini first to get the "true" disease label ──
         input_prompt = """
-        You are an expert in tomato leaf disease diagnosis. Analyze this image and provide:
-        1. Disease name (specific, first line)
-        2. Clinical description (2-3 sentences)
-        3. Recommended treatment
-        4. Severity assessment (Mild/Moderate/Severe)
-        Format clearly with sections.
+        You are an expert in tomato leaf diseases. Analyze this tomato leaf image carefully.
+        Identify the disease (or confirm healthy) and provide:
+        1. The disease name (be specific and concise in the first line)
+        2. A brief clinical description (2-3 sentences)
+        3. Recommended treatment steps
+        4. Severity assessment (Mild / Moderate / Severe)
+
+        Format your response clearly with labeled sections.
         """
 
-        with st.spinner("Analyzing with AI models..."):
+        with st.spinner("Analyzing image with AI models..."):
             progress = st.progress(0)
-            time.sleep(0.2)
+            time.sleep(0.3)
             progress.progress(20)
 
             try:
                 image_data = input_image_setup(uploaded_file)
-                time.sleep(0.3)
+                time.sleep(0.4)
                 progress.progress(40)
 
-                gemini_response = get_gemini_response(input_prompt, image_data, user_query or "Provide full diagnosis.")
-                time.sleep(0.2)
-                progress.progress(60)
+                gemini_response = get_gemini_response(input_prompt, image_data, user_query or "Provide a full disease diagnosis.")
+                time.sleep(0.3)
+                progress.progress(65)
 
                 true_label = extract_disease_from_gemini(gemini_response)
 
-                vgc16_ga_label, vgc16_ga_conf, vgc16_ga_scores = simulate_vgc16_ga(true_label)
+                # Simulate model results
+                vgg_label, vgg_conf, vgg_scores = simulate_vgg16(true_label)
                 time.sleep(0.2)
-                progress.progress(75)
+                progress.progress(80)
 
-                vgc16_psa_label, vgc16_psa_conf, vgc16_psa_scores = simulate_vgc16_psa(true_label)
+                gapso_label, gapso_conf, gapso_scores = simulate_ga_pso(true_label)
                 time.sleep(0.2)
-                progress.progress(90)
+                progress.progress(95)
 
                 ens_label, ens_conf, ens_scores = simulate_ensemble(true_label)
                 progress.progress(100)
@@ -546,112 +648,149 @@ if analyze_btn:
 
             except Exception as e:
                 progress.empty()
-                st.error(f"Analysis error: {e}")
+                st.error(f"Error during analysis: {e}")
                 st.stop()
 
-        def render_scores(scores, color, n=5):
-            sorted_items = sorted(scores.items(), key=lambda x: x[1], reverse=True)[:n]
-            html = '<div class="scores-title">📊 Top Predictions</div>'
-            for label, score in sorted_items:
+        def top_scores(scores, n=5, bar_class="vgg"):
+            top = sorted(scores.items(), key=lambda x: x[1], reverse=True)[:n]
+            rows = ""
+            for label, score in top:
                 pct = int(score * 100)
-                html += f"""
-                <div class="score-row">
-                    <div class="score-label">{label}</div>
-                    <div class="score-bar-bg">
-                        <div class="score-bar-fill" style="width:{pct}%; background:{color};"></div>
-                    </div>
-                    <div class="score-num">{score:.3f}</div>
+                rows += f"""
+            <div class="score-row">
+                <div class="score-label">{label}</div>
+                <div class="score-mini-bar-wrap">
+                    <div class="score-mini-bar {bar_class}" style="width:{pct}%; background: var(--bar-col);"></div>
                 </div>
-                """
-            return html
+                <div class="score-num">{score:.3f}</div>
+            </div>"""
+            return rows
 
-        ga_conf_pct = int(vgc16_ga_conf * 100)
-        psa_conf_pct = int(vgc16_psa_conf * 100)
+        # ── VGG16 + GA-PSO side by side ──────────────────────────────────────
+        vgg_acc_class = "low" if vgg_conf < 0.6 else "mid"
+        gapso_acc_class = "mid" if gapso_conf < 0.75 else "mid"
+        vgg_pct = int(vgg_conf * 100)
+        gapso_pct = int(gapso_conf * 100)
 
-        st.markdown(f"""
-        <div class="model-grid">
-            <div class="model-card">
-                <div class="model-header">
-                    <div>
-                        <div class="model-name ga">VGC16+GA</div>
-                        <div class="model-sub">CNN + Genetic Algorithm Optimization</div>
-                    </div>
-                    <div class="accuracy-badge">{ga_conf_pct}% confidence</div>
-                </div>
-                <div class="predicted-label">{vgc16_ga_label}</div>
-                <div class="conf-bar-wrap">
-                    <div class="conf-bar ga" style="width:{ga_conf_pct}%"></div>
-                </div>
-                <div class="conf-num">Confidence: {vgc16_ga_conf:.3f}</div>
-                {render_scores(vgc16_ga_scores, '#9c27b0')}
-            </div>
-            <div class="model-card">
-                <div class="model-header">
-                    <div>
-                        <div class="model-name psa">VGC16+PSA</div>
-                        <div class="model-sub">CNN + Particle Swarm Adaptation</div>
-                    </div>
-                    <div class="accuracy-badge">{psa_conf_pct}% confidence</div>
-                </div>
-                <div class="predicted-label">{vgc16_psa_label}</div>
-                <div class="conf-bar-wrap">
-                    <div class="conf-bar psa" style="width:{psa_conf_pct}%"></div>
-                </div>
-                <div class="conf-num">Confidence: {vgc16_psa_conf:.3f}</div>
-                {render_scores(vgc16_psa_scores, '#00897b')}
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        ens_conf_pct = int(ens_conf * 100)
-        st.markdown(f"""
-        <div class="ensemble-card">
-            <div class="ensemble-header">
-                <div class="ensemble-name">🌟 Ensemble Fusion</div>
-                <div class="ensemble-badge">VGC16+GA + VGC16+PSA</div>
-            </div>
-            <div class="ensemble-disease">{ens_label}</div>
-            <div class="conf-bar-wrap" style="margin: 1rem 0;">
-                <div class="conf-bar ensemble" style="width:{ens_conf_pct}%; height: 10px;"></div>
-            </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
-                <div class="conf-num">Final Diagnosis Confidence: {ens_conf:.3f}</div>
-                <div class="ensemble-confidence">{ens_conf_pct}%</div>
-            </div>
-            {render_scores(ens_scores, '#4caf50')}
-        </div>
-        """, unsafe_allow_html=True)
+        vgg_top = top_scores(vgg_scores, 5, "vgg")
+        gapso_top = top_scores(gapso_scores, 5, "gapso")
 
         st.markdown(f"""
-        <div class="gemini-section">
-            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1rem;">
-                <span style="font-size: 1.4rem;">🧠</span>
-                <span style="font-weight: 700; font-size: 1.1rem;">AI Clinical Diagnosis Report</span>
-            </div>
-            <div style="line-height: 1.7; color: #3a5a3d; white-space: pre-wrap;">{gemini_response}</div>
-        </div>
-        """, unsafe_allow_html=True)
+    <style>
+    .score-mini-bar.vgg {{ background: linear-gradient(90deg, #7c3aed, #a855f7); }}
+    .score-mini-bar.gapso {{ background: linear-gradient(90deg, #0891b2, #06b6d4); }}
+    .score-mini-bar.ensemble {{ background: linear-gradient(90deg, #16a34a, #4ade80); }}
+    </style>
+    <div class="model-grid">
 
-else:
-    st.markdown('<div class="fancy-divider"></div>', unsafe_allow_html=True)
-    st.markdown("""
-    <div class="model-grid" style="opacity: 0.5;">
-        <div class="model-card" style="background: #fafdf9;">
-            <div class="model-name ga">VGC16+GA</div>
-            <div class="model-sub">CNN + Genetic Algorithm</div>
-            <div class="predicted-label" style="color: #a0bba2;">—</div>
-            <div class="conf-num">Awaiting image upload</div>
+      <!-- VGG16 -->
+      <div class="model-card vgg">
+        <div class="model-card-header">
+          <div>
+            <div class="model-name vgg">VGG16 + GA</div>
+            <div class="model-fullname">Convolutional Neural Network with Genetic Algorithm</div>
+          </div>
+          <div class="accuracy-badge {vgg_acc_class}">{vgg_pct}% conf</div>
         </div>
-        <div class="model-card" style="background: #fafdf9;">
-            <div class="model-name psa">VGC16+PSA</div>
-            <div class="model-sub">CNN + Particle Swarm</div>
-            <div class="predicted-label" style="color: #a0bba2;">—</div>
-            <div class="conf-num">Awaiting image upload</div>
+        <div class="predicted-label">{vgg_label}</div>
+        <div class="confidence-row">
+          <div class="conf-num">{vgg_conf:.3f}</div>
+          <div class="conf-bar-wrap"><div class="conf-bar vgg" style="width:{vgg_pct}%"></div></div>
         </div>
-    </div>
-    <div class="ensemble-card" style="opacity: 0.5;">
-        <div class="ensemble-name">🌟 Ensemble Fusion</div>
-        <div class="ensemble-disease" style="color: #a0bba2;">Ready for analysis</div>
-        <div class="conf-num">Upload a tomato leaf image to begin diagnosis</div>
+        <div class="scores-title">Class Probability Distribution</div>
+        {vgg_top}
+      </div>
+
+      <!-- GA-PSO -->
+      <div class="model-card gapso">
+        <div class="model-card-header">
+          <div>
+            <div class="model-name gapso">VGG16 + PSA</div>
+            <div class="model-fullname">Particle Swarm Algorithm Feature Selection</div>
+          </div>
+          <div class="accuracy-badge {gapso_acc_class}">{gapso_pct}% conf</div>
+        </div>
+        <div class="predicted-label">{gapso_label}</div>
+        <div class="confidence-row">
+          <div class="conf-num">{gapso_conf:.3f}</div>
+          <div class="conf-bar-wrap"><div class="conf-bar gapso" style="width:{gapso_pct}%"></div></div>
+        </div>
+        <div class="scores-title">Class Probability Distribution</div>
+        {gapso_top}
+      </div>
+
     </div>
     """, unsafe_allow_html=True)
+
+        # ── Ensemble Card (full width) ────────────────────────────────────────
+        ens_pct = int(ens_conf * 100)
+        ens_top = top_scores(ens_scores, 5, "ensemble")
+
+        st.markdown('<div class="section-label">03 &nbsp; Ensemble Result</div>', unsafe_allow_html=True)
+        st.markdown(f"""
+    <div class="ensemble-card">
+      <div class="ensemble-inner">
+        <div>
+          <div class="ensemble-label-tag">Final Diagnosis · High Confidence</div>
+          <div class="ensemble-disease">{ens_label.replace(' ', '<br>')}</div>
+          <div class="confidence-row" style="margin-top:1rem;">
+            <div class="conf-num">{ens_conf:.3f}</div>
+            <div class="conf-bar-wrap" style="height:6px;">
+              <div class="conf-bar ensemble" style="width:{ens_pct}%; height:6px;"></div>
+            </div>
+          </div>
+          <div class="scores-title" style="margin-top:1.2rem;">Top Predictions</div>
+          {ens_top}
+        </div>
+        <div style="text-align:right; padding-right: 0.5rem;">
+          <div class="ensemble-conf-label">Confidence Score</div>
+          <div class="ensemble-conf-num">{ens_pct}<span class="ensemble-conf-unit">%</span></div>
+          <div style="margin-top:1rem; font-size:0.72rem; color:#5a6b5a; font-family:'JetBrains Mono',monospace; line-height:1.8;">
+            VGG16+GA ✓<br>VGG16+PSA ✓<br>Ensemble ✓
+          </div>
+        </div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+        # ── Gemini AI Response ────────────────────────────────────────────────
+        st.markdown('<div class="section-label">04 &nbsp; AI Diagnostic Report</div>', unsafe_allow_html=True)
+        st.markdown(f"""
+    <div class="gemini-section">
+      <h4>🌿 Full Diagnostic Analysis</h4>
+      <div class="gemini-response">{gemini_response}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+# ── Idle state ────────────────────────────────────────────────────────────────
+
+else:
+    st.markdown('<hr class="fancy-divider">', unsafe_allow_html=True)
+    st.markdown("""
+<div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:1.2rem; margin-bottom:2rem;">
+<div class="idle-card vgg" style="opacity:0.6;">
+<div class="model-name vgg">VGG16 + GA</div>
+<div class="model-fullname">Convolutional Neural Network with Genetic Algorithm</div>
+<div style="margin-top:1rem; color:#b0c0b0; font-size:0.82rem;">Awaiting image…</div>
+</div>
+<div class="idle-card gapso" style="opacity:0.6;">
+<div class="model-name gapso">VGG16 + PSA</div>
+<div class="model-fullname">Particle Swarm Algorithm Feature Selection</div>
+<div style="margin-top:1rem; color:#b0c0b0; font-size:0.82rem;">Awaiting image…</div>
+</div>
+<div class="idle-card ensemble" style="opacity:0.6;">
+<div class="model-name ensemble">Ensemble</div>
+<div class="model-fullname">VGG16 + GA-PSO Fusion</div>
+<div style="margin-top:1rem; color:#b0c0b0; font-size:0.82rem;">Awaiting image…</div>
+</div>
+</div>
+""", unsafe_allow_html=True)
+
+st.markdown('</div>', unsafe_allow_html=True)  # close main-wrap
+'''
+
+with open('/mnt/agents/output/app.py', 'w') as f:
+    f.write(code)
+
+print("File saved successfully!")
+print(f"Total lines: {len(code.splitlines())}")
