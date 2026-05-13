@@ -785,12 +785,3 @@ else:
 </div>
 </div>
 """, unsafe_allow_html=True)
-
-st.markdown('</div>', unsafe_allow_html=True)  # close main-wrap
-'''
-
-with open('/mnt/agents/output/app.py', 'w') as f:
-    f.write(code)
-
-print("File saved successfully!")
-print(f"Total lines: {len(code.splitlines())}")
