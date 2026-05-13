@@ -353,48 +353,13 @@ Label each section clearly."""
             prog.empty()
             status.empty()
 
-        except Exception as e:
-            prog.empty()
-            status.empty()
-            st.error(f"Analysis failed: {e}")
-            st.stop()
+            # Section 02: Model Results
+            st.markdown('<div class="sh"><div class="sh-n">02</div><div class="sh-t">Individual Model Results</div><div class="sh-l"></div></div>', unsafe_allow_html=True)
 
-def dist_html(scores, fill_cls, n=5):
-    top = sorted(scores.items(), key=lambda x: x[1], reverse=True)[:n]
-    return "".join(
-        f'<div class="dr"><div class="dr-name">{nm}</div>'
-        f'<div class="dr-track"><div class="dr-fill {fill_cls}" style="width:{int(sc*100)}%;"></div></div>'
-        f'<div class="dr-score">{sc:.4f}</div></div>'
-        for nm, sc in top
-    )
+            c1, c2 = st.columns(2, gap="large")
 
-def model_card(disease, conf, scores, tag_color, fill_cls, dist_cls):
-    pct = int(conf * 100)
-    chip = "chip-low" if pct < 65 else "chip-mid"
-    return f"""
-<div class="rc">
-<div class="rc-top">
-<div class="rc-tag" style="color:{tag_color};">Predicted Condition</div>
-<div class="rc-disease">{disease}</div>
-<div class="rc-conf">
-<div class="rc-conf-pct" style="color:{tag_color};">{pct}%</div>
-<div class="rc-track"><div class="rc-fill {fill_cls}" style="width:{pct}%;"></div></div>
-<span class="chip {chip}">{conf:.4f}</span>
-</div>
-</div>
-<div class="rc-bot">
-<div class="dist-lbl">Class probability distribution - top 5</div>
-{dist_html(scores, dist_cls)}
-</div>
-</div>"""
-
-# Section 02: Model Results
-st.markdown('<div class="sh"><div class="sh-n">02</div><div class="sh-t">Individual Model Results</div><div class="sh-l"></div></div>', unsafe_allow_html=True)
-
-c1, c2 = st.columns(2, gap="large")
-
-with c1:
-    st.markdown(f"""
+            with c1:
+                st.markdown(f"""
 <div class="mh">
 <div class="mh-left">
 <div class="mh-dot" style="background:#b45309;"></div>
@@ -406,8 +371,8 @@ with c1:
 {model_card(ga_label, ga_conf, ga_scores, "#b45309", "rc-fill-a", "dr-fill-a")}
 """, unsafe_allow_html=True)
 
-with c2:
-    st.markdown(f"""
+            with c2:
+                st.markdown(f"""
 <div class="mh">
 <div class="mh-left">
 <div class="mh-dot" style="background:#0e7490;"></div>
@@ -419,12 +384,12 @@ with c2:
 {model_card(pso_label, pso_conf, pso_scores, "#0e7490", "rc-fill-c", "dr-fill-c")}
 """, unsafe_allow_html=True)
 
-# Section 03: Ensemble
-st.markdown('<hr class="dv">', unsafe_allow_html=True)
-st.markdown('<div class="sh"><div class="sh-n">03</div><div class="sh-t">Ensemble Fusion - Final Diagnosis</div><div class="sh-l"></div></div>', unsafe_allow_html=True)
+            # Section 03: Ensemble
+            st.markdown('<hr class="dv">', unsafe_allow_html=True)
+            st.markdown('<div class="sh"><div class="sh-n">03</div><div class="sh-t">Ensemble Fusion - Final Diagnosis</div><div class="sh-l"></div></div>', unsafe_allow_html=True)
 
-ep = int(ens_conf * 100)
-st.markdown(f"""
+            ep = int(ens_conf * 100)
+            st.markdown(f"""
 <div class="ec">
 <div class="ec-banner">
 <div class="ec-banner-l">
@@ -461,10 +426,10 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# Section 04: Gemini Report
-st.markdown('<hr class="dv">', unsafe_allow_html=True)
-st.markdown('<div class="sh"><div class="sh-n">04</div><div class="sh-t">AI Diagnostic Report</div><div class="sh-l"></div></div>', unsafe_allow_html=True)
-st.markdown(f"""
+            # Section 04: Gemini Report
+            st.markdown('<hr class="dv">', unsafe_allow_html=True)
+            st.markdown('<div class="sh"><div class="sh-n">04</div><div class="sh-t">AI Diagnostic Report</div><div class="sh-l"></div></div>', unsafe_allow_html=True)
+            st.markdown(f"""
 <div class="rp">
 <div class="rp-head">
 <div class="rp-icon">🔬</div>
@@ -477,7 +442,12 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-if not analyze_btn or not uploaded_file:
+        except Exception as e:
+            prog.empty()
+            status.empty()
+            st.error(f"Analysis failed: {e}")
+            st.stop()
+else:
     st.markdown('<hr class="dv">', unsafe_allow_html=True)
     st.markdown('<div class="sh"><div class="sh-n">02</div><div class="sh-t">Model Results</div><div class="sh-l"></div></div>', unsafe_allow_html=True)
     st.markdown("""
