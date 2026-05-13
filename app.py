@@ -33,7 +33,7 @@ DISEASES = [
 
 def simulate_vgc16_ga(true_label):
     """VGC16+GA — CNN with Genetic Algorithm optimization"""
-    correct = random.random() > 0.32          # ~68% accuracy
+    correct = random.random() > 0.32
     if correct:
         label = true_label
         conf = round(random.uniform(0.58, 0.76), 3)
@@ -49,7 +49,7 @@ def simulate_vgc16_ga(true_label):
 
 def simulate_vgc16_psa(true_label):
     """VGC16+PSA — CNN with Particle Swarm Adaptation"""
-    correct = random.random() > 0.26          # ~74% accuracy
+    correct = random.random() > 0.26
     if correct:
         label = true_label
         conf = round(random.uniform(0.64, 0.81), 3)
@@ -74,7 +74,7 @@ def simulate_ensemble(true_label):
     return label, conf, scores
 
 def extract_disease_from_gemini(response_text):
-    """Best-effort extraction of the disease label from Gemini's response"""
+    """Extract disease label from Gemini's response"""
     for d in DISEASES:
         if d.lower() in response_text.lower():
             return d
@@ -83,13 +83,13 @@ def extract_disease_from_gemini(response_text):
 # ── Page Config ────────────────────────────────────────────────────────────────
 
 st.set_page_config(
-    page_title="Tomato Disease Detection System",
+    page_title="Tomato Leaf Disease Detection System",
     page_icon="🍅",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# ── Global CSS ── Modern, Light, Bigger Text ───────────────────────────────────
+# ── CSS Styling ─────────────────────────────────────────────────────────────────
 
 st.markdown("""
 <style>
@@ -106,15 +106,15 @@ html, body, .stApp {
     font-family: 'Plus Jakarta Sans', sans-serif !important;
 }
 
-/* Hide Streamlit branding */
 #MainMenu, footer, header, .stDeployButton { display: none !important; }
+
 .block-container { 
     padding: 2rem 3rem !important;
     max-width: 1400px !important;
     margin: 0 auto !important;
 }
 
-/* Hero Section - Bigger, Lighter */
+/* Hero Section */
 .hero {
     text-align: center;
     padding: 3rem 2rem 2.5rem;
@@ -167,16 +167,6 @@ html, body, .stApp {
     line-height: 1.6;
 }
 
-/* Upload Panel */
-.upload-card {
-    background: #ffffff;
-    border-radius: 32px;
-    padding: 1.8rem;
-    border: 1px solid #e8f0e5;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
-    margin-bottom: 2rem;
-}
-
 .section-label {
     font-size: 0.7rem;
     font-weight: 700;
@@ -196,7 +186,6 @@ html, body, .stApp {
     background: linear-gradient(90deg, #cde0ca, transparent);
 }
 
-/* Form Elements */
 .stTextArea textarea {
     background: #fafdf9 !important;
     border: 1px solid #ddecd9 !important;
@@ -237,7 +226,6 @@ html, body, .stApp {
     box-shadow: 0 8px 24px rgba(46, 125, 50, 0.3);
 }
 
-/* Model Grid - 2 columns */
 .model-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -323,7 +311,6 @@ html, body, .stApp {
     color: #5c7a5e;
 }
 
-/* Score Table */
 .scores-title {
     font-size: 0.65rem;
     font-weight: 700;
@@ -371,7 +358,6 @@ html, body, .stApp {
     color: #6b8d6e;
 }
 
-/* Ensemble Card - Full Width */
 .ensemble-card {
     background: linear-gradient(135deg, #ffffff 0%, #f9fff7 100%);
     border-radius: 32px;
@@ -432,7 +418,6 @@ html, body, .stApp {
     color: #2e7d32;
 }
 
-/* Gemini Response */
 .gemini-section {
     background: #fafdf9;
     border-radius: 28px;
@@ -441,7 +426,6 @@ html, body, .stApp {
     margin-top: 1.5rem;
 }
 
-/* Image Preview */
 .img-preview {
     background: #fafdf9;
     border-radius: 20px;
@@ -450,7 +434,6 @@ html, body, .stApp {
     border: 1px solid #e0ecd9;
 }
 
-/* Divider */
 .fancy-divider {
     margin: 2rem 0;
     border: none;
@@ -458,7 +441,6 @@ html, body, .stApp {
     background: linear-gradient(90deg, transparent, #cde0ca, transparent);
 }
 
-/* Responsive */
 @media (max-width: 768px) {
     .block-container { padding: 1rem !important; }
     .model-grid { grid-template-columns: 1fr; gap: 1rem; }
@@ -467,7 +449,6 @@ html, body, .stApp {
     .ensemble-disease { font-size: 1.5rem; }
 }
 
-/* Progress */
 .stProgress > div > div { background: #4caf50 !important; }
 </style>
 """, unsafe_allow_html=True)
@@ -525,7 +506,6 @@ if analyze_btn:
         st.markdown('<div class="fancy-divider"></div>', unsafe_allow_html=True)
         st.markdown('<div class="section-label">🔬 MODEL PREDICTIONS</div>', unsafe_allow_html=True)
 
-        # Run analysis
         input_prompt = """
         You are an expert in tomato leaf disease diagnosis. Analyze this image and provide:
         1. Disease name (specific, first line)
@@ -569,7 +549,7 @@ if analyze_btn:
                 st.error(f"Analysis error: {e}")
                 st.stop()
 
-        def render_scores(scores, bar_class, n=5):
+        def render_scores(scores, color, n=5):
             sorted_items = sorted(scores.items(), key=lambda x: x[1], reverse=True)[:n]
             html = '<div class="scores-title">📊 Top Predictions</div>'
             for label, score in sorted_items:
@@ -578,14 +558,13 @@ if analyze_btn:
                 <div class="score-row">
                     <div class="score-label">{label}</div>
                     <div class="score-bar-bg">
-                        <div class="score-bar-fill" style="width:{pct}%; background:{'#9c27b0' if bar_class == 'ga' else '#00897b' if bar_class == 'psa' else '#4caf50'};"></div>
+                        <div class="score-bar-fill" style="width:{pct}%; background:{color};"></div>
                     </div>
                     <div class="score-num">{score:.3f}</div>
                 </div>
                 """
             return html
 
-        # Display VGC16+GA and VGC16+PSA side by side
         ga_conf_pct = int(vgc16_ga_conf * 100)
         psa_conf_pct = int(vgc16_psa_conf * 100)
 
@@ -604,7 +583,7 @@ if analyze_btn:
                     <div class="conf-bar ga" style="width:{ga_conf_pct}%"></div>
                 </div>
                 <div class="conf-num">Confidence: {vgc16_ga_conf:.3f}</div>
-                {render_scores(vgc16_ga_scores, 'ga')}
+                {render_scores(vgc16_ga_scores, '#9c27b0')}
             </div>
             <div class="model-card">
                 <div class="model-header">
@@ -619,12 +598,11 @@ if analyze_btn:
                     <div class="conf-bar psa" style="width:{psa_conf_pct}%"></div>
                 </div>
                 <div class="conf-num">Confidence: {vgc16_psa_conf:.3f}</div>
-                {render_scores(vgc16_psa_scores, 'psa')}
+                {render_scores(vgc16_psa_scores, '#00897b')}
             </div>
         </div>
         """, unsafe_allow_html=True)
 
-        # Ensemble Card
         ens_conf_pct = int(ens_conf * 100)
         st.markdown(f"""
         <div class="ensemble-card">
@@ -640,18 +618,17 @@ if analyze_btn:
                 <div class="conf-num">Final Diagnosis Confidence: {ens_conf:.3f}</div>
                 <div class="ensemble-confidence">{ens_conf_pct}%</div>
             </div>
-            {render_scores(ens_scores, 'ensemble')}
+            {render_scores(ens_scores, '#4caf50')}
         </div>
         """, unsafe_allow_html=True)
 
-        # Gemini Response
         st.markdown(f"""
         <div class="gemini-section">
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1rem;">
                 <span style="font-size: 1.4rem;">🧠</span>
                 <span style="font-weight: 700; font-size: 1.1rem;">AI Clinical Diagnosis Report</span>
             </div>
-            <div style="line-height: 1.7; color: #3a5a3d;">{gemini_response}</div>
+            <div style="line-height: 1.7; color: #3a5a3d; white-space: pre-wrap;">{gemini_response}</div>
         </div>
         """, unsafe_allow_html=True)
 
