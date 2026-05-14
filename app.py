@@ -58,6 +58,45 @@ def extract_disease(text):
             return d
     return random.choice(DISEASES[:-1])
 
+def model_card(disease, confidence, scores, color, fill_class, dr_fill_class):
+    """Generate HTML for model result card"""
+    pct = int(confidence * 100)
+    dist_rows = ""
+    for disease_name, score in sorted(scores.items(), key=lambda x: x[1], reverse=True)[:5]:
+        score_pct = int(score * 100)
+        dist_rows += f"""<div class="dr">
+<div class="dr-name">{disease_name}</div>
+<div class="dr-track"><div class="dr-fill {dr_fill_class}" style="width:{score_pct}%;"></div></div>
+<div class="dr-score">{score:.4f}</div>
+</div>"""
+    
+    return f"""<div class="rc">
+<div class="rc-top">
+<div class="rc-tag">Predicted Disease</div>
+<div class="rc-disease">{disease}</div>
+<div class="rc-conf">
+<div class="rc-conf-pct">{pct}%</div>
+<div class="rc-track"><div class="rc-fill {fill_class}" style="width:{pct}%;"></div></div>
+</div>
+</div>
+<div class="rc-bot">
+<div class="dist-lbl">Class probability distribution</div>
+{dist_rows}
+</div>
+</div>"""
+
+def dist_html(scores, fill_class):
+    """Generate HTML for probability distribution"""
+    dist_rows = ""
+    for disease_name, score in sorted(scores.items(), key=lambda x: x[1], reverse=True)[:5]:
+        score_pct = int(score * 100)
+        dist_rows += f"""<div class="dr">
+<div class="dr-name">{disease_name}</div>
+<div class="dr-track"><div class="dr-fill {fill_class}" style="width:{score_pct}%;"></div></div>
+<div class="dr-score">{score:.4f}</div>
+</div>"""
+    return dist_rows
+
 # ── Page Config ────────────────────────────────────────────────────────────────
 
 st.set_page_config(
