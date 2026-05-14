@@ -10,7 +10,7 @@ import google.generativeai as genai
 
 # ── API ────────────────────────────────────────────────────────────────────────
 
-genai.configure(api_key="AIzaSyBde5UCIE5dRy6_tEXxjUlEeiuOZupOalM")
+genai.configure(api_key="AIzaSyAITAKqFfJWWGU4BI3pnCJCAGAxgBYijHc")
 
 def get_gemini_response(input_text, image, prompt):
     model = genai.GenerativeModel("gemini-2.5-flash")
