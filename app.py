@@ -71,7 +71,7 @@ Rules:
 - scores must sum to 1.0
 - {'VGG16+GA should get it wrong about 40% of the time' if 'GA' in model_name else 'VGG16+PSO should get it wrong about 30% of the time'}"""
 
-    model = genai.GenerativeModel("gemini-2.5-flash-preview-04-17")
+    model = genai.GenerativeModel("gemini-2.5-flash")
     response = model.generate_content(prompt)
     raw = response.text.strip().replace("```json", "").replace("```", "").strip()
     data = json.loads(raw)
