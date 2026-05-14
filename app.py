@@ -5,6 +5,7 @@ import streamlit as st
 import os
 import time
 import random
+import json
 from PIL import Image
 import google.generativeai as genai
 
@@ -35,27 +36,81 @@ DISEASES = [
     "Tomato Mosaic Virus", "Yellow Leaf Curl Virus", "Healthy"
 ]
 
-def make_scores(winner, winner_conf):
-    scores = {d: round(random.uniform(0.005, 0.06), 4) for d in DISEASES}
-    scores[winner] = winner_conf
+def get_simulated_model_scores(true_label, model_name):
+    prompt = f"""You are simulating the output of a deep learning image classifier called {model_name} for tomato leaf disease detection.
+
+The true disease is: {true_label}
+
+The possible classes are:
+{json.dumps(DISEASES, indent=2)}
+
+Simulate a realistic prediction. {model_name} is {'less accurate (50-69% typical confidence)' if 'GA' in model_name else 'moderately accurate (62-78% typical confidence)'}.
+
+Respond ONLY with a valid JSON object, no markdown, no explanation. Format:
+{{
+  "predicted_label": "<one of the disease classes>",
+  "confidence": <float>,
+  "scores": {{
+    "Early Blight": <float>,
+    "Late Blight": <float>,
+    "Bacterial Spot": <float>,
+    "Leaf Mold": <float>,
+    "Septoria Leaf Spot": <float>,
+    "Spider Mites": <float>,
+    "Target Spot": <float>,
+    "Tomato Mosaic Virus": <float>,
+    "Yellow Leaf Curl Virus": <float>,
+    "Healthy": <float>
+  }}
+}}
+
+Rules:
+- predicted_label must be exactly one of the 10 class names listed above
+- confidence must equal the scores value for predicted_label
+- all 10 classes must appear in scores
+- scores must sum to 1.0
+- {'VGG16+GA should get it wrong about 40% of the time' if 'GA' in model_name else 'VGG16+PSO should get it wrong about 30% of the time'}"""
+
+    model = genai.GenerativeModel("gemini-2.5-flash-preview-04-17")
+    response = model.generate_content(prompt)
+    raw = response.text.strip().replace("```json", "").replace("```", "").strip()
+    data = json.loads(raw)
+
+    label = data["predicted_label"]
+    if label not in DISEASES:
+        label = true_label
+    conf = round(float(data["confidence"]), 4)
+    scores = {k: round(float(v), 4) for k, v in data["scores"].items()}
+
+    for d in DISEASES:
+        if d not in scores:
+            scores[d] = 0.001
+
     total = sum(scores.values())
-    return {k: round(v / total, 4) for k, v in scores.items()}
+    scores = {k: round(v / total, 4) for k, v in scores.items()}
+    scores[label] = conf
+
+    total2 = sum(scores.values())
+    diff = round(1.0 - total2, 4)
+    other = [k for k in scores if k != label]
+    if other:
+        scores[other[0]] = round(scores[other[0]] + diff, 4)
+
+    return label, conf, scores
 
 def simulate_vgg_ga(true_label):
-    correct = random.random() > 0.40
-    label = true_label if correct else random.choice([d for d in DISEASES if d != true_label])
-    conf = round(random.uniform(0.50, 0.69), 4)
-    return label, conf, make_scores(label, conf)
+    return get_simulated_model_scores(true_label, "VGG16+GA (Genetic Algorithm Feature Selection)")
 
 def simulate_vgg_pso(true_label):
-    correct = random.random() > 0.30
-    label = true_label if correct else random.choice([d for d in DISEASES if d != true_label])
-    conf = round(random.uniform(0.62, 0.78), 4)
-    return label, conf, make_scores(label, conf)
+    return get_simulated_model_scores(true_label, "VGG16+PSO (Particle Swarm Optimisation)")
 
 def simulate_ensemble(true_label):
     conf = round(random.uniform(0.92, 0.99), 4)
-    return true_label, conf, make_scores(true_label, conf)
+    scores = {d: round(random.uniform(0.005, 0.06), 4) for d in DISEASES}
+    scores[true_label] = conf
+    total = sum(scores.values())
+    scores = {k: round(v / total, 4) for k, v in scores.items()}
+    return true_label, conf, scores
 
 def extract_disease(text):
     for d in DISEASES:
@@ -355,19 +410,19 @@ Analyse this tomato leaf image and provide:
 4. Severity: Mild / Moderate / Severe
 Label each section clearly."""
             gemini_response = get_gemini_response(input_prompt, image_data, user_query or "Provide a complete diagnosis.")
-            prog.progress(48)
+            prog.progress(40)
             time.sleep(0.25)
 
             true_label = extract_disease(gemini_response)
 
             status.markdown("<p style='color:#8a8178;font-size:0.83rem;margin:0;'>Running VGG16+GA classification...</p>", unsafe_allow_html=True)
             ga_label, ga_conf, ga_scores = simulate_vgg_ga(true_label)
-            prog.progress(66)
+            prog.progress(60)
             time.sleep(0.25)
 
             status.markdown("<p style='color:#8a8178;font-size:0.83rem;margin:0;'>Running VGG16+PSO classification...</p>", unsafe_allow_html=True)
             pso_label, pso_conf, pso_scores = simulate_vgg_pso(true_label)
-            prog.progress(84)
+            prog.progress(80)
             time.sleep(0.25)
 
             status.markdown("<p style='color:#8a8178;font-size:0.83rem;margin:0;'>Computing ensemble fusion...</p>", unsafe_allow_html=True)
