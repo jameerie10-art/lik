@@ -18,7 +18,7 @@ if not api_key:
 genai.configure(api_key=api_key)
 
 def get_gemini_response(input_text, image, prompt):
-    model = genai.GenerativeModel("gemini-2.5-flash-preview-04-17")
+    model = genai.GenerativeModel("gemini-2.5-flash")
     response = model.generate_content([input_text, image[0], prompt])
     return response.text
 
