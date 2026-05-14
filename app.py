@@ -5,18 +5,12 @@ import streamlit as st
 import os
 import time
 import random
-import json
 from PIL import Image
 import google.generativeai as genai
 
 # ── API ────────────────────────────────────────────────────────────────────────
 
-api_key = os.getenv("GEMINI_API_KEY")
-if not api_key:
-    st.error("GEMINI_API_KEY environment variable is not set.")
-    st.stop()
-
-genai.configure(api_key=api_key)
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 def get_gemini_response(input_text, image, prompt):
     model = genai.GenerativeModel("gemini-2.5-flash")
@@ -36,81 +30,27 @@ DISEASES = [
     "Tomato Mosaic Virus", "Yellow Leaf Curl Virus", "Healthy"
 ]
 
-def get_simulated_model_scores(true_label, model_name):
-    prompt = f"""You are simulating the output of a deep learning image classifier called {model_name} for tomato leaf disease detection.
-
-The true disease is: {true_label}
-
-The possible classes are:
-{json.dumps(DISEASES, indent=2)}
-
-Simulate a realistic prediction. {model_name} is {'less accurate (50-69% typical confidence)' if 'GA' in model_name else 'moderately accurate (62-78% typical confidence)'}.
-
-Respond ONLY with a valid JSON object, no markdown, no explanation. Format:
-{{
-  "predicted_label": "<one of the disease classes>",
-  "confidence": <float>,
-  "scores": {{
-    "Early Blight": <float>,
-    "Late Blight": <float>,
-    "Bacterial Spot": <float>,
-    "Leaf Mold": <float>,
-    "Septoria Leaf Spot": <float>,
-    "Spider Mites": <float>,
-    "Target Spot": <float>,
-    "Tomato Mosaic Virus": <float>,
-    "Yellow Leaf Curl Virus": <float>,
-    "Healthy": <float>
-  }}
-}}
-
-Rules:
-- predicted_label must be exactly one of the 10 class names listed above
-- confidence must equal the scores value for predicted_label
-- all 10 classes must appear in scores
-- scores must sum to 1.0
-- {'VGG16+GA should get it wrong about 40% of the time' if 'GA' in model_name else 'VGG16+PSO should get it wrong about 30% of the time'}"""
-
-    model = genai.GenerativeModel("gemini-2.5-flash")
-    response = model.generate_content(prompt)
-    raw = response.text.strip().replace("```json", "").replace("```", "").strip()
-    data = json.loads(raw)
-
-    label = data["predicted_label"]
-    if label not in DISEASES:
-        label = true_label
-    conf = round(float(data["confidence"]), 4)
-    scores = {k: round(float(v), 4) for k, v in data["scores"].items()}
-
-    for d in DISEASES:
-        if d not in scores:
-            scores[d] = 0.001
-
+def make_scores(winner, winner_conf):
+    scores = {d: round(random.uniform(0.005, 0.06), 4) for d in DISEASES}
+    scores[winner] = winner_conf
     total = sum(scores.values())
-    scores = {k: round(v / total, 4) for k, v in scores.items()}
-    scores[label] = conf
-
-    total2 = sum(scores.values())
-    diff = round(1.0 - total2, 4)
-    other = [k for k in scores if k != label]
-    if other:
-        scores[other[0]] = round(scores[other[0]] + diff, 4)
-
-    return label, conf, scores
+    return {k: round(v / total, 4) for k, v in scores.items()}
 
 def simulate_vgg_ga(true_label):
-    return get_simulated_model_scores(true_label, "VGG16+GA (Genetic Algorithm Feature Selection)")
+    correct = random.random() > 0.40
+    label = true_label if correct else random.choice([d for d in DISEASES if d != true_label])
+    conf = round(random.uniform(0.50, 0.69), 4)
+    return label, conf, make_scores(label, conf)
 
 def simulate_vgg_pso(true_label):
-    return get_simulated_model_scores(true_label, "VGG16+PSO (Particle Swarm Optimisation)")
+    correct = random.random() > 0.30
+    label = true_label if correct else random.choice([d for d in DISEASES if d != true_label])
+    conf = round(random.uniform(0.62, 0.78), 4)
+    return label, conf, make_scores(label, conf)
 
 def simulate_ensemble(true_label):
     conf = round(random.uniform(0.92, 0.99), 4)
-    scores = {d: round(random.uniform(0.005, 0.06), 4) for d in DISEASES}
-    scores[true_label] = conf
-    total = sum(scores.values())
-    scores = {k: round(v / total, 4) for k, v in scores.items()}
-    return true_label, conf, scores
+    return true_label, conf, make_scores(true_label, conf)
 
 def extract_disease(text):
     for d in DISEASES:
@@ -119,6 +59,7 @@ def extract_disease(text):
     return random.choice(DISEASES[:-1])
 
 def model_card(disease, confidence, scores, color, fill_class, dr_fill_class):
+    """Generate HTML for model result card"""
     pct = int(confidence * 100)
     dist_rows = ""
     for disease_name, score in sorted(scores.items(), key=lambda x: x[1], reverse=True)[:5]:
@@ -128,6 +69,7 @@ def model_card(disease, confidence, scores, color, fill_class, dr_fill_class):
 <div class="dr-track"><div class="dr-fill {dr_fill_class}" style="width:{score_pct}%;"></div></div>
 <div class="dr-score">{score:.4f}</div>
 </div>"""
+    
     return f"""<div class="rc">
 <div class="rc-top">
 <div class="rc-tag">Predicted Disease</div>
@@ -144,6 +86,7 @@ def model_card(disease, confidence, scores, color, fill_class, dr_fill_class):
 </div>"""
 
 def dist_html(scores, fill_class):
+    """Generate HTML for probability distribution"""
     dist_rows = ""
     for disease_name, score in sorted(scores.items(), key=lambda x: x[1], reverse=True)[:5]:
         score_pct = int(score * 100)
@@ -200,6 +143,7 @@ html, body, .stApp { background: var(--off-white) !important; color: var(--text-
 .block-container { padding: 0 !important; max-width: 100% !important; }
 section[data-testid="stSidebar"] { display: none !important; }
 
+/* NAV */
 .navbar { background: var(--white); border-bottom: 1px solid var(--border); padding: 0 3.5rem; height: 60px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; box-shadow: var(--sh-sm); }
 .nav-brand { display: flex; align-items: center; gap: 9px; }
 .nav-logo { width: 32px; height: 32px; background: var(--green); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; }
@@ -208,6 +152,7 @@ section[data-testid="stSidebar"] { display: none !important; }
 .nav-tags { display: flex; gap: 6px; }
 .nav-tag { background: var(--off-white); border: 1px solid var(--border); border-radius: 100px; padding: 3px 11px; font-size: 0.7rem; font-weight: 500; color: var(--text-soft); font-family: 'IBM Plex Mono', monospace; letter-spacing: 0.02em; }
 
+/* HERO */
 .hero { background: var(--white); border-bottom: 1px solid var(--border); padding: 3.8rem 3.5rem 3.2rem; }
 .hero-inner { max-width: 1080px; margin: 0 auto; display: grid; grid-template-columns: 1fr auto; gap: 2rem; align-items: end; }
 .hero-eyebrow { display: inline-flex; align-items: center; gap: 7px; background: var(--green-lt); border: 1px solid var(--green-mu); border-radius: 100px; padding: 4px 14px; font-size: 0.7rem; font-weight: 600; color: var(--green); letter-spacing: 0.09em; text-transform: uppercase; margin-bottom: 1.2rem; font-family: 'IBM Plex Mono', monospace; }
@@ -220,17 +165,22 @@ section[data-testid="stSidebar"] { display: none !important; }
 .hero-right-label { font-size: 0.68rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.09em; font-family: 'IBM Plex Mono', monospace; margin-bottom: 2px; }
 .hero-right-val { font-size: 0.86rem; color: var(--text-mid); font-weight: 500; }
 
+/* PAGE BODY */
 .pg { max-width: 1080px; margin: 0 auto; padding: 2.5rem 3.5rem; }
 
+/* SECTION HEAD */
 .sh { display: flex; align-items: center; gap: 11px; margin-bottom: 1.4rem; }
 .sh-n { width: 26px; height: 26px; background: var(--text-dark); border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 600; color: white; font-family: 'IBM Plex Mono', monospace; flex-shrink: 0; }
 .sh-t { font-size: 0.92rem; font-weight: 600; color: var(--text-dark); letter-spacing: -0.01em; }
 .sh-l { flex: 1; height: 1px; background: var(--border); }
 
+/* DIVIDER */
 .dv { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
 
+/* UPLOAD CARD */
 .u-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 1.8rem 2rem; box-shadow: var(--sh-sm); }
 
+/* WIDGETS */
 .stTextArea textarea { background: var(--off-white) !important; border: 1.5px solid var(--border) !important; border-radius: var(--r-sm) !important; color: var(--text-dark) !important; font-family: 'Outfit', sans-serif !important; font-size: 0.91rem !important; padding: 12px 14px !important; line-height: 1.6 !important; transition: border-color 0.2s, box-shadow 0.2s !important; }
 .stTextArea textarea:focus { border-color: var(--green-mid) !important; box-shadow: 0 0 0 3px rgba(45,138,80,0.1) !important; background: var(--white) !important; }
 .stTextArea label, .stFileUploader label { font-size: 0.8rem !important; font-weight: 600 !important; color: var(--text-mid) !important; letter-spacing: 0.01em !important; }
@@ -238,10 +188,12 @@ section[data-testid="stSidebar"] { display: none !important; }
 [data-testid="stFileUploader"] section:hover { border-color: var(--green-mid) !important; background: var(--green-lt) !important; }
 [data-testid="stFileUploader"] section p { color: var(--text-soft) !important; font-size: 0.83rem !important; }
 
+/* BUTTON */
 .stButton > button { background: var(--green) !important; border: none !important; border-radius: var(--r-sm) !important; color: white !important; font-family: 'Outfit', sans-serif !important; font-size: 0.89rem !important; font-weight: 600 !important; padding: 0.7rem 2rem !important; width: 100% !important; transition: all 0.18s ease !important; box-shadow: 0 2px 10px rgba(26,107,58,0.28) !important; letter-spacing: 0.01em !important; }
 .stButton > button:hover { background: var(--green-mid) !important; box-shadow: 0 4px 18px rgba(26,107,58,0.38) !important; transform: translateY(-1px) !important; }
 .stButton > button:active { transform: translateY(0) !important; }
 
+/* IMAGE CARD */
 .img-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--sh-sm); }
 .img-meta { padding: 0.9rem 1.2rem; display: flex; gap: 8px; border-top: 1px solid var(--border); background: var(--off-white); }
 .img-chip { background: var(--white); border: 1px solid var(--border); border-radius: 6px; padding: 3px 10px; font-size: 0.7rem; font-family: 'IBM Plex Mono', monospace; color: var(--text-soft); }
@@ -249,6 +201,7 @@ section[data-testid="stSidebar"] { display: none !important; }
 .img-ph { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); height: 210px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9px; color: var(--text-faint); font-size: 0.82rem; }
 .img-ph-icon { font-size: 2rem; opacity: 0.35; }
 
+/* MODEL HEADER ROW */
 .mh { background: var(--white); border: 1px solid var(--border); border-radius: var(--r-md); padding: 1.1rem 1.5rem; margin-bottom: 0.9rem; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--sh-sm); }
 .mh-left { display: flex; align-items: center; gap: 8px; }
 .mh-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
@@ -259,6 +212,7 @@ section[data-testid="stSidebar"] { display: none !important; }
 .chip-mid { background: var(--cyan-lt); color: var(--cyan); border: 1px solid var(--cyan-mu); }
 .chip-high { background: var(--green-lt); color: var(--green); border: 1px solid var(--green-mu); }
 
+/* RESULT CARD */
 .rc { background: var(--white); border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--sh-sm); }
 .rc-top { padding: 1.5rem 1.7rem 1.3rem; border-bottom: 1px solid var(--border); }
 .rc-tag { font-size: 0.68rem; font-family: 'IBM Plex Mono', monospace; font-weight: 500; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 5px; }
@@ -281,6 +235,7 @@ section[data-testid="stSidebar"] { display: none !important; }
 .dr-fill-g { background: linear-gradient(90deg, #1a6b3a, #4ade80); }
 .dr-score { font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem; color: var(--text-faint); width: 44px; text-align: right; flex-shrink: 0; }
 
+/* ENSEMBLE CARD */
 .ec { background: var(--white); border: 2px solid var(--green-mu); border-radius: var(--r-lg); overflow: hidden; box-shadow: 0 6px 28px rgba(26,107,58,0.11), var(--sh-sm); }
 .ec-banner { background: linear-gradient(135deg, #e8f5ed, #d6edd9); border-bottom: 1px solid var(--green-mu); padding: 1.3rem 1.8rem; display: flex; align-items: center; justify-content: space-between; }
 .ec-banner-l { display: flex; align-items: center; gap: 10px; }
@@ -301,6 +256,7 @@ section[data-testid="stSidebar"] { display: none !important; }
 .ec-badges { display: flex; gap: 5px; justify-content: flex-end; flex-wrap: wrap; margin-top: 10px; }
 .eb { background: var(--green-lt); border: 1px solid var(--green-mu); border-radius: 6px; padding: 3px 9px; font-size: 0.67rem; font-family: 'IBM Plex Mono', monospace; color: var(--green); font-weight: 500; }
 
+/* REPORT CARD */
 .rp { background: var(--white); border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--sh-sm); }
 .rp-head { padding: 1.1rem 1.7rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; background: var(--off-white); }
 .rp-icon { width: 28px; height: 28px; background: var(--amber-lt); border: 1px solid var(--amber-mu); border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; }
@@ -308,6 +264,7 @@ section[data-testid="stSidebar"] { display: none !important; }
 .rp-sub { font-size: 0.72rem; color: var(--text-soft); }
 .rp-body { padding: 1.7rem; font-size: 0.91rem; color: var(--text-mid); line-height: 1.82; white-space: pre-wrap; font-weight: 400; }
 
+/* IDLE */
 .idle-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1.2rem; }
 .ic { background: var(--white); border: 1px solid var(--border); border-radius: var(--r-md); padding: 1.4rem 1.6rem; opacity: 0.5; box-shadow: var(--sh-sm); }
 .ic-dot { width: 8px; height: 8px; border-radius: 50%; margin-bottom: 0.8rem; }
@@ -315,6 +272,7 @@ section[data-testid="stSidebar"] { display: none !important; }
 .ic-full { font-size: 0.76rem; color: var(--text-faint); font-weight: 300; }
 .ic-bar { height: 4px; background: var(--surface); border-radius: 100px; margin-top: 1rem; }
 
+/* PROGRESS */
 .stProgress > div > div { background: var(--green) !important; border-radius: 100px !important; }
 div[data-testid="stImage"] img { border-radius: 0 !important; display: block !important; }
 </style>
@@ -364,6 +322,8 @@ st.markdown("""
 
 st.markdown('<div class="pg">', unsafe_allow_html=True)
 
+# Section 01: Input
+
 st.markdown('<div class="sh"><div class="sh-n">01</div><div class="sh-t">Upload & Configure</div><div class="sh-l"></div></div>', unsafe_allow_html=True)
 
 col_l, col_r = st.columns([3, 2], gap="large")
@@ -410,19 +370,19 @@ Analyse this tomato leaf image and provide:
 4. Severity: Mild / Moderate / Severe
 Label each section clearly."""
             gemini_response = get_gemini_response(input_prompt, image_data, user_query or "Provide a complete diagnosis.")
-            prog.progress(40)
+            prog.progress(48)
             time.sleep(0.25)
 
             true_label = extract_disease(gemini_response)
 
             status.markdown("<p style='color:#8a8178;font-size:0.83rem;margin:0;'>Running VGG16+GA classification...</p>", unsafe_allow_html=True)
             ga_label, ga_conf, ga_scores = simulate_vgg_ga(true_label)
-            prog.progress(60)
+            prog.progress(66)
             time.sleep(0.25)
 
             status.markdown("<p style='color:#8a8178;font-size:0.83rem;margin:0;'>Running VGG16+PSO classification...</p>", unsafe_allow_html=True)
             pso_label, pso_conf, pso_scores = simulate_vgg_pso(true_label)
-            prog.progress(80)
+            prog.progress(84)
             time.sleep(0.25)
 
             status.markdown("<p style='color:#8a8178;font-size:0.83rem;margin:0;'>Computing ensemble fusion...</p>", unsafe_allow_html=True)
