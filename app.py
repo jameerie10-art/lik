@@ -362,7 +362,7 @@ if analyze_btn:
 
             status.markdown("<p style='color:#8a8178;font-size:0.83rem;margin:0;'>Analysing leaf pathology...</p>", unsafe_allow_html=True)
             input_prompt = """You are an expert plant pathologist specialising in tomato diseases.
-Analyse this tomato leaf image accurately, get the issue, and provide three instances of classification that varies, add analysis and performance for each, as well as confidence score, Title one VGG16-GA Model (62% confidence), second one VGG16-PSO Model (72% confidence) and last one Ensemble Model (96% confidence), make their answers correct and correlate to one another, just confidence difference:
+Analyse this tomato leaf image accurately, if its not a tomato leaf plant, say it isn't, you analyze only tomato leaf, do not give analysis for anything else, if it is a tomato leaf plant, get the issue, and provide three instances of classification that varies, add analysis and performance for each, as well as confidence score, Title one VGG16-GA Model (62% confidence), second one VGG16-PSO Model (72% confidence) and last one Ensemble Model (96% confidence), make their answers correct and correlate to one another, just confidence difference:
 
 1. Disease name (exact, on first line)
 2. Clinical description (2-3 sentences)
