@@ -355,7 +355,7 @@ if analyze_btn:
         status = st.empty()
 
         try:
-            status.markdown("<p style='color:#8a8178;font-size:0.83rem;margin:0;'>Connecting to vision model...</p>", unsafe_allow_html=True)
+            status.markdown("<p style='color:#8a8178;font-size:0.83rem;margin:0;'>Connecting to models...</p>", unsafe_allow_html=True)
             image_data = input_image_setup(uploaded_file)
             prog.progress(18)
             time.sleep(0.3)
