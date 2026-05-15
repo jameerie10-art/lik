@@ -392,37 +392,37 @@ Label each section clearly."""
             prog.empty()
             status.empty()
 
-            # Section 02: Model Results
-            st.markdown('<div class="sh"><div class="sh-n">02</div><div class="sh-t">Individual Model Results</div><div class="sh-l"></div></div>', unsafe_allow_html=True)
+# ── RESULTS ───────────────────────────────────────────────────────────────
 
-            c1, c2 = st.columns(2, gap="large")
+st.markdown('<hr class="dv">', unsafe_allow_html=True)
+st.markdown(
+    '<div class="sh"><div class="sh-n">02</div><div class="sh-t">Analysis Results</div><div class="sh-l"></div></div>',
+    unsafe_allow_html=True
+)
 
-            with c1:
-                st.markdown(f"""
-<div class="mh">
-<div class="mh-left">
-<div class="mh-dot" style="background:#b45309;"></div>
-<span class="mh-name" style="color:#b45309;">VGG16 + GA</span>
-<span class="mh-full">- Genetic Algorithm Feature Selection</span>
-</div>
-<span class="chip chip-low">{int(ga_conf*100)}% conf</span>
-</div>
-{model_card(ga_label, ga_conf, ga_scores, "#b45309", "rc-fill-a", "dr-fill-a")}
-""", unsafe_allow_html=True)
+# VGG16 + GA
+st.subheader("VGG16 + GA")
+st.write(f"Predicted Disease: **{ga_label}**")
+st.write(f"Confidence Score: **{ga_conf:.2%}**")
 
-            with c2:
-                st.markdown(f"""
-<div class="mh">
-<div class="mh-left">
-<div class="mh-dot" style="background:#0e7490;"></div>
-<span class="mh-name" style="color:#0e7490;">VGG16 + PSO</span>
-<span class="mh-full">- Particle Swarm Optimisation</span>
-</div>
-<span class="chip chip-mid">{int(pso_conf*100)}% conf</span>
-</div>
-{model_card(pso_label, pso_conf, pso_scores, "#0e7490", "rc-fill-c", "dr-fill-c")}
-""", unsafe_allow_html=True)
+# VGG16 + PSO
+st.subheader("VGG16 + PSO")
+st.write(f"Predicted Disease: **{pso_label}**")
+st.write(f"Confidence Score: **{pso_conf:.2%}**")
 
+# Ensemble
+st.subheader("Ensemble Result")
+st.success(f"Final Prediction: {ens_label}")
+st.write(f"Ensemble Confidence: **{ens_conf:.2%}**")
+
+# Report
+st.markdown('<hr class="dv">', unsafe_allow_html=True)
+st.markdown(
+    '<div class="sh"><div class="sh-n">03</div><div class="sh-t">Diagnostic Report</div><div class="sh-l"></div></div>',
+    unsafe_allow_html=True
+)
+
+st.write(gemini_response)
             # Section 03: Ensemble
             st.markdown('<hr class="dv">', unsafe_allow_html=True)
             st.markdown('<div class="sh"><div class="sh-n">03</div><div class="sh-t">Ensemble Fusion - Final Diagnosis</div><div class="sh-l"></div></div>', unsafe_allow_html=True)
