@@ -392,51 +392,8 @@ Label each section clearly."""
             prog.empty()
             status.empty()
 
-            # Section 03: Ensemble
             st.markdown('<hr class="dv">', unsafe_allow_html=True)
-            st.markdown('<div class="sh"><div class="sh-n">03</div><div class="sh-t">Ensemble Fusion - Final Diagnosis</div><div class="sh-l"></div></div>', unsafe_allow_html=True)
-
-            ep = int(ens_conf * 100)
-            st.markdown(f"""
-<div class="ec">
-<div class="ec-banner">
-<div class="ec-banner-l">
-<div class="ec-check">✓</div>
-<div>
-<div class="ec-btitle">Ensemble Model - High Confidence Result</div>
-<div class="ec-bsub">VGG16+GA x VGG16+PSO weighted fusion</div>
-</div>
-</div>
-<span class="chip chip-high">{ep}% confidence</span>
-</div>
-<div class="ec-body">
-<div>
-<div class="ec-tag">Final Predicted Condition</div>
-<div class="ec-disease">{ens_label}</div>
-<div class="ec-conf-row">
-<div class="ec-conf-pct">{ep}%</div>
-<div class="ec-track"><div class="ec-fill" style="width:{ep}%;"></div></div>
-<span class="chip chip-high">{ens_conf:.4f}</span>
-</div>
-<div class="dist-lbl">Class probability distribution - top 5</div>
-{dist_html(ens_scores, "dr-fill-g")}
-</div>
-<div class="ec-right">
-<div class="ec-big">{ep}<span class="ec-big-unit">%</span></div>
-<div class="ec-note">Confidence Score</div>
-<div class="ec-badges" style="margin-top:1rem;">
-<div class="eb">VGG16+GA</div>
-<div class="eb">VGG16+PSO</div>
-<div class="eb">Ensemble ✓</div>
-</div>
-</div>
-</div>
-</div>
-""", unsafe_allow_html=True)
-
-            # Section 04: Gemini Report
-            st.markdown('<hr class="dv">', unsafe_allow_html=True)
-            st.markdown('<div class="sh"><div class="sh-n">04</div><div class="sh-t">AI Diagnostic Report</div><div class="sh-l"></div></div>', unsafe_allow_html=True)
+            st.markdown('<div class="sh"><div class="sh-n">02</div><div class="sh-t">AI Diagnostic Report</div><div class="sh-l"></div></div>', unsafe_allow_html=True)
             st.markdown(f"""
 <div class="rp">
 <div class="rp-head">
