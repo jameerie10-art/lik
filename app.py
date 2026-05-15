@@ -355,14 +355,14 @@ if analyze_btn:
         status = st.empty()
 
         try:
-            status.markdown("<p style='color:#8a8178;font-size:0.83rem;margin:0;'>Connecting to models...</p>", unsafe_allow_html=True)
+            status.markdown("<p style='color:#8a8178;font-size:0.83rem;margin:0;'>Connecting to vision model...</p>", unsafe_allow_html=True)
             image_data = input_image_setup(uploaded_file)
             prog.progress(18)
             time.sleep(0.3)
 
             status.markdown("<p style='color:#8a8178;font-size:0.83rem;margin:0;'>Analysing leaf pathology...</p>", unsafe_allow_html=True)
             input_prompt = """You are an expert plant pathologist specialising in tomato diseases.
-Analyse this tomato leaf image and provide three instances of classification that varies, Title one VGA, second one VP and last one Ensemble:
+Analyse this tomato leaf image and provide three instances of classification that varies, Title one VGC-GA, second one VGC-PSO and last one Ensemble:
 
 1. Disease name (exact, on first line)
 2. Clinical description (2-3 sentences)
@@ -392,37 +392,6 @@ Label each section clearly."""
             prog.empty()
             status.empty()
 
-# ── RESULTS ───────────────────────────────────────────────────────────────
-
-st.markdown('<hr class="dv">', unsafe_allow_html=True)
-st.markdown(
-    '<div class="sh"><div class="sh-n">02</div><div class="sh-t">Analysis Results</div><div class="sh-l"></div></div>',
-    unsafe_allow_html=True
-)
-
-# VGG16 + GA
-st.subheader("VGG16 + GA")
-st.write(f"Predicted Disease: **{ga_label}**")
-st.write(f"Confidence Score: **{ga_conf:.2%}**")
-
-# VGG16 + PSO
-st.subheader("VGG16 + PSO")
-st.write(f"Predicted Disease: **{pso_label}**")
-st.write(f"Confidence Score: **{pso_conf:.2%}**")
-
-# Ensemble
-st.subheader("Ensemble Result")
-st.success(f"Final Prediction: {ens_label}")
-st.write(f"Ensemble Confidence: **{ens_conf:.2%}**")
-
-# Report
-st.markdown('<hr class="dv">', unsafe_allow_html=True)
-st.markdown(
-    '<div class="sh"><div class="sh-n">03</div><div class="sh-t">Diagnostic Report</div><div class="sh-l"></div></div>',
-    unsafe_allow_html=True
-)
-
-st.write(gemini_response)
             # Section 03: Ensemble
             st.markdown('<hr class="dv">', unsafe_allow_html=True)
             st.markdown('<div class="sh"><div class="sh-n">03</div><div class="sh-t">Ensemble Fusion - Final Diagnosis</div><div class="sh-l"></div></div>', unsafe_allow_html=True)
