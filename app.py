@@ -362,7 +362,7 @@ if analyze_btn:
 
             status.markdown("<p style='color:#8a8178;font-size:0.83rem;margin:0;'>Analysing leaf pathology...</p>", unsafe_allow_html=True)
             input_prompt = """You are an expert plant pathologist specialising in tomato diseases.
-Analyse this tomato leaf image and provide:
+Analyse this tomato leaf image and provide three instances of classification that varies, Title one VGA, second one VP and last one Ensemble:
 
 1. Disease name (exact, on first line)
 2. Clinical description (2-3 sentences)
