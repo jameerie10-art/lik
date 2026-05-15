@@ -473,7 +473,7 @@ Label each section clearly."""
 <div class="rp-head">
 <div class="rp-icon">🔬</div>
 <div>
-<div class="rp-title">Full Pathology Analysis - Gemini Vision</div>
+<div class="rp-title">Full Pathology Analysis</div>
 <div class="rp-sub">Generated from image + model consensus</div>
 </div>
 </div>
