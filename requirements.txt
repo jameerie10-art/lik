@@ -1,6 +1,7 @@
-streamlit
-google-generativeai
-python-dotenv
-langchain
-PyPDF2
-chromadb
+# Streamlit is pinned exactly, as the Community Cloud docs recommend, so a silent
+# auto-upgrade cannot change behaviour under you. The rest carry floors and ceilings.
+streamlit==1.63.0
+pandas>=2.2,<4
+numpy>=1.26,<3
+plotly>=5.24,<8
+google-genai==2.23.0
