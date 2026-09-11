@@ -1,0 +1,11 @@
+# Committed so the deployed app behaves the same as it does locally.
+[server]
+maxUploadSize = 100          # MB. Community Cloud defaults to 200, which is more than
+                             # this app should ever need and more than it can hold in RAM.
+enableXsrfProtection = true
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+base = "dark"                # only the chrome Streamlit draws before the app's own CSS loads
